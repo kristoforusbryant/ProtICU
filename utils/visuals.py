@@ -1,6 +1,6 @@
 import numpy as np 
 import matplotlib
-import matplotlib.plotly as plt 
+from matplotlib import pyplot as plt
 import copy 
 
 def visualise_tensors(tensors, cols, idx_dict):
