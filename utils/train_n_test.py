@@ -6,8 +6,7 @@ from tqdm import tqdm
 import sklearn.metrics as metrics
 
 class TrainTest(): 
-    # TODO: allow inference of class_size from data
-    def __init__(self, model, data, params, class_size=2):
+    def __init__(self, model, data, params):
         # hyperparams
         self.batch_size      = int(params['BATCH_SIZE'])
         self.epochs          = params['EPOCHS']
@@ -16,6 +15,7 @@ class TrainTest():
         self.patience        = params['PATIENCE']
         self.min_delta       = params['MIN_DELTA']
         self.use_gpu         = torch.cuda.is_available()
+        self.class_size      = data[2][1].shape[1]
         
         # data 
         dataset = TensorDataset(data[0][0], data[0][1])
