@@ -35,23 +35,25 @@ class TrainTest():
                                maxpool_size = params['MAXPOOL'],
                                fc_sizes     = params['FC_SIZES'],
                                droprate     = params['DROPOUT']) 
-        elif model.__str__() == 'ProtICU': 
+        elif model.__str__() == 'ProtICU':
             # generating protop_classes
             protop_classes = np.array([])
             class_size = data[2][1].shape[1]
-            for i in range(class_size):
-                protop_classes = np.array(protop_classes, [i] * (params['OBO_SIZES'][-1] // class_size))
-            protop_classes[params['OBO_SIZES'][-1]:] = class_size - 1 # protop_classes
+            largest_mult = params['OBO_SIZES'][-1] // data[2][1].shape[1]
+            remainder = params['OBO_SIZES'][-1] % class_size
+            for i in range(2):
+                protop_classes = np.append(protop_classes, [i] * largest_mult)
+            protop_classes = np.append(protop_classes, [2-1] * remainder)             
             
             # initialising model 
-            self.model = model(input_shape      = data[0][0].shape, 
-                               class_size       = class_size, 
-                               hidden_sizes     = params['HIDDEN_SIZES'], 
-                               kernel_sizes     = params['KERNEL_SIZES'], 
+            self.model = model(input_shape      = data[0][0].shape,
+                               class_size       = class_size,
+                               hidden_sizes     = params['HIDDEN_SIZES'],
+                               kernel_sizes     = params['KERNEL_SIZES'],
                                maxpool_size     = params['MAXPOOL'],
                                one_by_one_sizes = params['OBO_SIZES'],
-                               protop_classes   = protop_classes, 
-                               droprate         = params['DROPOUT'])             
+                               protop_classes   = protop_classes,
+                               droprate         = params['DROPOUT'])
             
         self.optimizer = params['OPTIMIZER'](self.model.parameters(),
                                             lr=params['LEARNING_RATE'])
@@ -63,14 +65,14 @@ class TrainTest():
         self.stats           = {}
     
     def train_one(self, data):
-        if self.use_gpu: 
+        if self.use_gpu:
             X, y = Variable(data[0].cuda()), Variable(data[1].cuda())
         else: 
             X, y = Variable(data[0]), Variable(data[1])
         
         self.model.zero_grad()
         
-        if loss.__str__() == 'Prototype Loss': 
+        if loss.__str__() == 'Prototype Loss':
             outputs, min_dis = self.model(X)
             loss = self.loss(outputs, y.reshape(-1).long(), min_dis, self.protop_classes) 
         else: 
