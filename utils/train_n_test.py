@@ -52,9 +52,13 @@ class TrainTest():
             X, y = Variable(data[0]), Variable(data[1])
         
         self.model.zero_grad()
-        outputs = self.model(X)
-
-        loss = self.loss(outputs, y.reshape(-1).long())
+        
+        if loss.__str__() == 'Prototype Loss': 
+            outputs, min_dis = self.model(X)
+            loss = self.loss(outputs, y.reshape(-1).long(), min_dis, self.protop_classes) 
+        else: 
+            outputs = self.model(X)
+            loss = self.loss(outputs, y.reshape(-1).long())
         
         if self.model.training: 
             self.optimizer.zero_grad()
