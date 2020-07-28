@@ -120,3 +120,6 @@ class ProtICU(nn.Module):
         sim = self.dis2sim(min_dis)
         out = torch.sigmoid(self.last_layer(sim))
         return out, min_dis  
+    
+    def __str__(self): 
+        return 'ProtICU'

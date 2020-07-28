@@ -15,7 +15,6 @@ class TrainTest():
         self.patience        = params['PATIENCE']
         self.min_delta       = params['MIN_DELTA']
         self.use_gpu         = torch.cuda.is_available()
-        self.class_size      = data[2][1].shape[1]
         
         # data 
         dataset = TensorDataset(data[0][0], data[0][1])
@@ -28,14 +27,32 @@ class TrainTest():
         del dataset
         
         # model 
-        ## TODO: can make this flexible to other inputs 
-        self.model = model(input_shape  = data[0][0].shape, 
-                           class_size   = class_size, 
-                           hidden_sizes = params['HIDDEN_SIZES'], 
-                           kernel_sizes = params['KERNEL_SIZES'], 
-                           maxpool_size = params['MAXPOOL'],
-                           fc_sizes     = params['FC_SIZES'],
-                           droprate     = params['DROPOUT']) 
+        if model.__str__() == '1D-CNN': 
+            self.model = model(input_shape  = data[0][0].shape, 
+                               class_size   = data[2][1].shape[1], 
+                               hidden_sizes = params['HIDDEN_SIZES'], 
+                               kernel_sizes = params['KERNEL_SIZES'], 
+                               maxpool_size = params['MAXPOOL'],
+                               fc_sizes     = params['FC_SIZES'],
+                               droprate     = params['DROPOUT']) 
+        elif model.__str__() == 'ProtICU': 
+            # generating protop_classes
+            protop_classes = np.array([])
+            class_size = data[2][1].shape[1]
+            for i in range(class_size):
+                protop_classes = np.array(protop_classes, [i] * (params['OBO_SIZES'][-1] // class_size))
+            protop_classes[params['OBO_SIZES'][-1]:] = class_size - 1 # protop_classes
+            
+            # initialising model 
+            self.model = model(input_shape      = data[0][0].shape, 
+                               class_size       = class_size, 
+                               hidden_sizes     = params['HIDDEN_SIZES'], 
+                               kernel_sizes     = params['KERNEL_SIZES'], 
+                               maxpool_size     = params['MAXPOOL'],
+                               one_by_one_sizes = params['OBO_SIZES'],
+                               protop_classes   = protop_classes, 
+                               droprate         = params['DROPOUT'])             
+            
         self.optimizer = params['OPTIMIZER'](self.model.parameters(),
                                             lr=params['LEARNING_RATE'])
         
