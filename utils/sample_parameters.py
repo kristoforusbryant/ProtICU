@@ -71,7 +71,7 @@ class OneByOneGenerator(ConsecutiveGenerator):
     def sample(self, N=None): 
         samples = super().sample(N)
         protop_num = np.random.choice(self.protop_nums)
-        return np.array([np.append(a, [protop_num]) for a in samples ])
+        return np.array([np.append(a.astype('int64'), [protop_num]) for a in samples ])
     
 class HiddenAndKernelGenerator(): 
     def __init__(self, depth_range, hidden_sizes, kernel_sizes, ascending=(True, False)):

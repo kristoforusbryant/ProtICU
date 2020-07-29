@@ -15,7 +15,6 @@ class ProtICU(nn.Module):
         """
         
         super(ProtICU, self).__init__()
-        
         assert len(hidden_sizes) == len(kernel_sizes) 
         
         to_proto = []
@@ -65,7 +64,7 @@ class ProtICU(nn.Module):
         # Prototypes 
         self.protop_classes = torch.Tensor(protop_classes) 
         self.prototypes = nn.Parameter(torch.rand((self.protop_classes.shape[0], one_by_one_sizes[-1])),
-                                      requires_grad=False)
+                                          requires_grad=False) # proto_num x dim
         self.prototype_activation = prototype_activation
         
         # Last Layer
@@ -121,5 +120,5 @@ class ProtICU(nn.Module):
         out = torch.sigmoid(self.last_layer(sim))
         return out, min_dis  
     
-    def __str__(self): 
+    def __name__(): 
         return 'ProtICU'

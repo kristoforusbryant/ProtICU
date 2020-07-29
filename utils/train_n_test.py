@@ -27,24 +27,23 @@ class TrainTest():
         del dataset
         
         # model 
-        if model.__str__() == '1D-CNN': 
+        if model.__name__ == '1D-CNN': 
             self.model = model(input_shape  = data[0][0].shape, 
-                               class_size   = data[2][1].shape[1], 
+                               class_size   = int(data[2][1].unique().shape[0]), 
                                hidden_sizes = params['HIDDEN_SIZES'], 
                                kernel_sizes = params['KERNEL_SIZES'], 
                                maxpool_size = params['MAXPOOL'],
                                fc_sizes     = params['FC_SIZES'],
                                droprate     = params['DROPOUT']) 
-        elif model.__str__() == 'ProtICU':
+        elif model.__name__ == 'ProtICU':
             # generating protop_classes
-            protop_classes = np.array([])
-            class_size = data[2][1].shape[1]
-            largest_mult = params['OBO_SIZES'][-1] // data[2][1].shape[1]
-            remainder = params['OBO_SIZES'][-1] % class_size
-            for i in range(2):
-                protop_classes = np.append(protop_classes, [i] * largest_mult)
-            protop_classes = np.append(protop_classes, [2-1] * remainder)             
-            
+            protop_classes = np.zeros(params['PROTOTYPE_NUM'])
+            class_size = int(data[2][1].unique().shape[0])
+            largest_mult = int(protop_classes.shape[0] // class_size)
+            for i in range(class_size-1): 
+                protop_classes[i * largest_mult: (i + 1) * largest_mult] = i 
+            protop_classes[(class_size-1) * largest_mult: ] = class_size-1
+
             # initialising model 
             self.model = model(input_shape      = data[0][0].shape,
                                class_size       = class_size,
@@ -72,14 +71,14 @@ class TrainTest():
         
         self.model.zero_grad()
         
-        if loss.__str__() == 'Prototype Loss':
+        if self.loss.__name__() == 'Prototype Loss':
             outputs, min_dis = self.model(X)
-            loss = self.loss(outputs, y.reshape(-1).long(), min_dis, self.protop_classes) 
-        else: 
+            loss = self.loss(outputs, y.reshape(-1).long(), min_dis, self.model.protop_classes) 
+        else:
             outputs = self.model(X)
             loss = self.loss(outputs, y.reshape(-1).long())
         
-        if self.model.training: 
+        if self.model.training:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
