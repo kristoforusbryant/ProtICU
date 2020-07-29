@@ -13,7 +13,7 @@ class protop_loss():
         for i in range(onehot.shape[0]):
             mask[y.squeeze() == i,:] = onehot.float()[i]
         mask[mask == 0] += 1000
-        loss,_ = torch.min(min_dis * mask, dim=1) 
+        loss,_ = torch.min(min_dis * mask, dim=1)
         return torch.mean(loss)
 
     def separation_loss(self, min_dis, y, protop_classes): 
@@ -26,14 +26,18 @@ class protop_loss():
         return -torch.mean(loss)
     
     def __call__(self, out, y, min_dis, protop_classes, verbose=False): 
-        loss =  self.ce(out, y)\
-                + self.cluster_loss(min_dis, y, protop_classes) \
-                + self.separation_loss(min_dis, y , protop_classes)
+        ce = self.ce(out,y)
+        clust = self.cluster_loss(min_dis, y, protop_classes) * self.clust_reg
+        sep = self.separation_loss(min_dis, y , protop_classes) * self.sep_reg
+        loss =  ce + clust + sep 
         if verbose: 
-            print(self.ce(out, y.reshape(-1).long()))
-            print(self.cluster_loss(min_dis, y, protop_classes))
-            print(self.separation_loss(min_dis, y , protop_classes))
+            print(ce)
+            print(clust)
+            print(sep)
         return loss
+    
+    def __repr__(self): 
+        return 'protop_loss_' + str(self.clust_reg) +'_'+ str(self.sep_reg)
     
     def __name__(self): 
         return 'Prototype Loss'

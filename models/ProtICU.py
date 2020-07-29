@@ -71,6 +71,8 @@ class ProtICU(nn.Module):
         self.class_size = class_size
         self.last_layer = nn.Linear(self.protop_classes.shape[0], class_size, bias=False)
         
+        # Initialise weights
+        self.init_weights()
         
     def init_weights(self, incorrect_weight=-.5): 
         # initialise kaiming for Conv layers
@@ -81,7 +83,7 @@ class ProtICU(nn.Module):
                     nn.init.constant_(m.bias, 0)
         
         # initialise last layer
-        _weights = torch.zeros((self.class_size, self.protop_classes.shape[0]))
+        _weights = torch.zeros((self.class_size, self.protop_classes.shape[0]), requires_grad=True)
         for i in range(self.class_size): 
             _weights[i,] =  (self.protop_classes == i).float() + \
                             (self.protop_classes != i).float() * incorrect_weight
@@ -93,31 +95,30 @@ class ProtICU(nn.Module):
         protnet_out(tensor): bs x patch_num x dim 
         protops(tensor): bs x protopsize x dim 
         """
-        dis = protnet_out.unsqueeze(2) - protops # bs x patch_num x protopsize x dim 
-        dis *= dis 
-        dis = torch.sum(dis, dim = 3).transpose(1,2) # bs x protopsize x patch_num 
-        dis = torch.sqrt(dis)
-        dis = torch.min(dis, 2).values
-        return dis 
+        diff = protnet_out.unsqueeze(2) - protops # bs x patch_num x protopsize x dim 
+        l2_dis = diff * diff  
+        l2_dis_sum = torch.sum(l2_dis, dim = 3).transpose(1,2) # bs x protopsize x patch_num 
+        l2_dis_rsum = torch.sqrt(l2_dis_sum)
+        min_dis = torch.min(l2_dis_rsum, 2).values
+        return min_dis 
     
     def dis2sim(self, dis, epsilon=.0001): 
         if self.prototype_activation == 'log': 
-            return torch.log((dis + 1)/(dis + epsilon))
+            sim = torch.log((dis + 1)/(dis + epsilon))
+            return sim 
         elif self.prototype_activation == 'linear': 
             return -dis 
         else: 
             raise ValueError('prototype_activation not defined')
             
     def forward(self, input): 
-        # Initialise weights
-        self.init_weights()
-        
         # Run models
         input_t = input.transpose(1,2) # transpose to bs x dim x sl  
         protnet_out = self.to_proto(input_t).transpose(1,2) # bs x patch_num x dim 
         min_dis = self.l2_conv(protnet_out, self.prototypes)
         sim = self.dis2sim(min_dis)
-        out = torch.sigmoid(self.last_layer(sim))
+        last = self.last_layer(sim)
+        out = torch.nn.functional.softmax(last, dim=1)
         return out, min_dis  
     
     def __name__(): 

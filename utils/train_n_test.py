@@ -79,6 +79,12 @@ class TrainTest():
             loss = self.loss(outputs, y.reshape(-1).long())
         
         if self.model.training:
+            #print('Conv_1D_1') 
+            #print(next(self.model.to_proto.modules())[3].weight)
+            
+            #print('Last_linear')
+            #print(self.model.last_layer.weight)
+            
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -92,7 +98,7 @@ class TrainTest():
             train_loss = []
             self.model.train()
             for data in tqdm(self.trainset): train_loss.append(self.train_one(data))
-            self.mean_train_loss.append(np.mean(train_loss)) 
+            self.mean_train_loss.append(np.mean(train_loss))
             
             # validating
             val_loss = []
@@ -127,7 +133,7 @@ class TrainTest():
         else: 
             X, y = Variable(self.testset[0]), Variable(self.testset[1])
         
-        outputs  = self.model(X).data
+        outputs  = self.model(X)[0].data
         self.stats['auroc'] = metrics.roc_auc_score(y, outputs[:,1])
         self.stats['auprc'] = metrics.average_precision_score(y, outputs[:,1])
         self.stats['acc']   = metrics.accuracy_score(y, np.around(outputs[:,1]))
