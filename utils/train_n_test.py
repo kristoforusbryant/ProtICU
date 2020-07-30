@@ -27,7 +27,7 @@ class TrainTest():
         del dataset
         
         # model 
-        if model.__name__ == '1D-CNN': 
+        if model.__name__ == 'CNN_1D':
             self.model = model(input_shape  = data[0][0].shape, 
                                class_size   = int(data[2][1].unique().shape[0]), 
                                hidden_sizes = params['HIDDEN_SIZES'], 
@@ -71,7 +71,7 @@ class TrainTest():
         
         self.model.zero_grad()
         
-        if self.loss.__name__() == 'Prototype Loss':
+        if 'protop_loss' in self.loss.__repr__(): #self.loss.__name__() == 'Prototype Loss':
             outputs, min_dis = self.model(X)
             loss = self.loss(outputs, y.reshape(-1).long(), min_dis, self.model.protop_classes) 
         else:
@@ -133,7 +133,11 @@ class TrainTest():
         else: 
             X, y = Variable(self.testset[0]), Variable(self.testset[1])
         
-        outputs  = self.model(X)[0].data
+        if type(self.model).__name__ == 'ProtICU':
+            outputs  = self.model(X)[0].data
+        else: 
+            outputs = self.model(X).data
+            
         self.stats['auroc'] = metrics.roc_auc_score(y, outputs[:,1])
         self.stats['auprc'] = metrics.average_precision_score(y, outputs[:,1])
         self.stats['acc']   = metrics.accuracy_score(y, np.around(outputs[:,1]))
