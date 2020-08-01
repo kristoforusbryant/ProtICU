@@ -12,7 +12,7 @@ class protop_loss():
         mask = torch.zeros(min_dis.shape)
         for i in range(onehot.shape[0]):
             mask[y.squeeze() == i,:] = onehot.float()[i]
-        mask[mask == 0] += 1000
+        mask[mask == 0] += 10 # find a better way to mask!
         loss,_ = torch.min(min_dis * mask, dim=1)
         return torch.mean(loss)
 
@@ -21,7 +21,7 @@ class protop_loss():
         mask = torch.zeros(min_dis.shape)
         for i in range(onehot.shape[0]):
             mask[y.squeeze() == i,:] = onehot.float()[i]
-        mask[mask == 0] += 1000
+        mask[mask == 0] += 10
         loss,_ = torch.min(min_dis * mask, dim=1) 
         return -torch.mean(loss)
     

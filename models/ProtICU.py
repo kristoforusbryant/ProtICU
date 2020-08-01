@@ -1,6 +1,7 @@
 import torch 
 import torch.nn as nn 
 from collections import OrderedDict
+from torch.autograd import Variable
 
 class ProtICU(nn.Module): 
     def __init__(self, input_shape, class_size, hidden_sizes, kernel_sizes, maxpool_size, one_by_one_sizes,
@@ -88,18 +89,18 @@ class ProtICU(nn.Module):
             _weights[i,] =  (self.protop_classes == i).float() + \
                             (self.protop_classes != i).float() * incorrect_weight
         self.last_layer.weight.data.copy_(_weights)
-        
-    
+      
     def l2_conv(self, protnet_out, protops): 
         """
         protnet_out(tensor): bs x patch_num x dim 
         protops(tensor): bs x protopsize x dim 
         """
+        # I need to reassign to different names everytime to avoid in-place replacement
         diff = protnet_out.unsqueeze(2) - protops # bs x patch_num x protopsize x dim 
         l2_dis = diff * diff  
-        l2_dis_sum = torch.sum(l2_dis, dim = 3).transpose(1,2) # bs x protopsize x patch_num 
+        l2_dis_sum = torch.sum(l2_dis, dim=3).transpose(1,2) # bs x protopsize x patch_num 
         l2_dis_rsum = torch.sqrt(l2_dis_sum)
-        min_dis = torch.min(l2_dis_rsum, 2).values
+        min_dis = torch.min(l2_dis_rsum, dim=2).values
         return min_dis 
     
     def dis2sim(self, dis, epsilon=.0001): 
@@ -110,16 +111,44 @@ class ProtICU(nn.Module):
             return -dis 
         else: 
             raise ValueError('prototype_activation not defined')
-            
+
     def forward(self, input): 
         # Run models
-        input_t = input.transpose(1,2) # transpose to bs x dim x sl  
+        input_t = input.transpose(1,2) # transpose to bs x dim x sl 
         protnet_out = self.to_proto(input_t).transpose(1,2) # bs x patch_num x dim 
-        min_dis = self.l2_conv(protnet_out, self.prototypes)
+        min_dis = self.l2_conv(protnet_out, self.prototypes) # bs x proto_num 
         sim = self.dis2sim(min_dis)
         last = self.last_layer(sim)
         out = torch.nn.functional.softmax(last, dim=1)
-        return out, min_dis  
+        return out, min_dis
+       
+    def propose_prototype(self, data):
+        X, y = Variable(data[0]), Variable(data[1]).reshape(-1)
+        
+        out = self.to_proto(X.transpose(1,2)).transpose(1,2) # bs x patch_num x dim 
+        dis = out.unsqueeze(2) - self.prototypes # bs x patch_num x protopsize x dim 
+        dis *= dis  
+        dis = torch.sum(dis, dim = 3).transpose(1,2) # bs x protopsize x patch_num 
+        dis = torch.sqrt(dis)
+
+        # minimum across patches 
+        min_dis = torch.min(dis, dim=2).values.data
+        patch_loc = torch.argmin(dis, dim=2).data 
+
+        # minimum across data points
+        address_min = torch.zeros(self.protop_classes.shape).long()
+        for c in range(self.protop_classes.unique().shape[0]):
+            temp = min_dis.clone()
+            temp[y != c] += 10000 # poison wrong class 
+            address_min[self.protop_classes == c] = torch.argmin(temp, dim=0).data[self.protop_classes  == c] 
+        proposal_min = min_dis[address_min,:].diag() # prot_num
+        prot_raw = X[address_min,:,:] # prot_num x sl x dim 
+        min_patch_loc = patch_loc[address_min,:].diag() # prot_num 
+        prot_rep = out.data[address_min, min_patch_loc] # prot_num x dim 
+
+        return proposal_min, prot_rep, prot_raw, min_patch_loc   
     
+    def 
+            
     def __name__(): 
         return 'ProtICU'
