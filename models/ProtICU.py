@@ -100,7 +100,7 @@ class ProtICU(nn.Module):
         l2_dis = diff * diff  
         l2_dis_sum = torch.sum(l2_dis, dim=3).transpose(1,2) # bs x protopsize x patch_num 
         l2_dis_rsum = torch.sqrt(l2_dis_sum)
-        min_dis = torch.min(l2_dis_rsum, dim=2).values
+        min_dis = torch.min(l2_dis_rsum, dim=2)
         return min_dis 
     
     def dis2sim(self, dis, epsilon=.0001): 
@@ -112,15 +112,18 @@ class ProtICU(nn.Module):
         else: 
             raise ValueError('prototype_activation not defined')
 
-    def forward(self, input): 
+    def forward(self, input, get_patch=False): 
         # Run models
         input_t = input.transpose(1,2) # transpose to bs x dim x sl 
         protnet_out = self.to_proto(input_t).transpose(1,2) # bs x patch_num x dim 
         min_dis = self.l2_conv(protnet_out, self.prototypes) # bs x proto_num 
-        sim = self.dis2sim(min_dis)
+        sim = self.dis2sim(min_dis.values)
         last = self.last_layer(sim)
         out = torch.nn.functional.softmax(last, dim=1)
-        return out, min_dis
+        if get_patch: 
+            return out, min_dis.values, min_dis.indices
+        else: 
+            return out, min_dis.values 
        
     def propose_prototype(self, data):
         X, y = Variable(data[0]), Variable(data[1]).reshape(-1)
@@ -147,8 +150,6 @@ class ProtICU(nn.Module):
         prot_rep = out.data[address_min, min_patch_loc] # prot_num x dim 
 
         return proposal_min, prot_rep, prot_raw, min_patch_loc   
-    
-    def 
             
     def __name__(): 
         return 'ProtICU'

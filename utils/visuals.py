@@ -3,7 +3,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 import copy 
 
-def visualise_tensors(data, prototypes, highlights, cols, idx_dict, exclude=[], cmap='viridis'):
+def compare_with_prototypes(data, prototypes, highlights, cols, idx_dict, exclude=[], cmap='viridis', save=False):
     """
     data(tensor): sl x dim input tensor 
     prototypes(list of tensors): list of sl x dim prototype tensor 
@@ -63,13 +63,17 @@ def visualise_tensors(data, prototypes, highlights, cols, idx_dict, exclude=[], 
             current += 1
             
     plt.tight_layout()
+    if save: 
+        fig.savefig(save)
+    
         
 def disc_transform(a, disc_idx): 
     new = []
     for idx in disc_idx:
-        temp = np.array(a)[:,:,idx] * np.arange(1, len(idx) + 1)
-        new.append(temp.sum(axis=2))
-    return np.array(new).transpose(1,2,0)
+        temp = np.array(a)[:,idx] * np.arange(1, len(idx) + 1)
+        new.append(temp.sum(axis=1))
+    return np.array(new).transpose(1,0)
+
 
 def plot_one(ax, a, mask, title, highlight, color):
     ax.plot(a, linestyle='dotted')

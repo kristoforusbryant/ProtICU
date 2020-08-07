@@ -14,7 +14,7 @@ class CNN_1D(nn.Module):
         """
         
         super(CNN_1D, self).__init__()
-        
+        self.name='1D-CNN'
         assert len(hidden_sizes) == len(kernel_sizes)
         
         model = []
@@ -75,7 +75,5 @@ class CNN_1D(nn.Module):
     def forward(self, input): 
         input_t = input.transpose(1,2) # transpose to bs, dim, sl  
         return self.model(input_t)
-    
-    def __str__(self): 
-        return '1D-CNN'
+
     

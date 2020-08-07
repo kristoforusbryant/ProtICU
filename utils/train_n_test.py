@@ -6,7 +6,7 @@ from tqdm import tqdm
 import sklearn.metrics as metrics
 
 class TrainTest(): 
-    def __init__(self, model, data, params, push_epochs):
+    def __init__(self, model, data, params, push_epochs=[]):
         # hyperparams
         self.batch_size      = int(params['BATCH_SIZE'])
         self.epochs          = params['EPOCHS']
@@ -54,16 +54,22 @@ class TrainTest():
                                protop_classes   = protop_classes,
                                droprate         = params['DROPOUT'], 
                                prototype_activation = params['PROTO_ACTIVATION'])
+        elif model.__name__ == 'MLP':
+            self.model = model(input_shape        = data[0][0].shape, 
+                               class_size         = int(data[2][1].unique().shape[0]), 
+                               fc_sizes           = params['FC_SIZES'],
+                               droprate           = params['DROPOUT']) 
             
         self.optimizer = params['OPTIMIZER'](self.model.parameters(),
                                             lr=params['LEARNING_RATE'])
         
         
         #prototype related 
-        self.prototype_raw   = (None, None)
-        self.prototype_num   = params['PROTOTYPE_NUM']
         self.push_epochs     = push_epochs
-        
+        if model.__name__ == 'ProtICU':
+            self.prototype_raw   = (None, None)
+            self.prototype_num   = params['PROTOTYPE_NUM']
+            
         # result
         self.mean_train_loss = []
         self.mean_val_loss   = []
@@ -116,29 +122,25 @@ class TrainTest():
             for data in tqdm(self.valset): val_loss.append(self.train_one(data))
             
             # pushing 
-            if epoch in self.push_epochs:
-                print('Updating prototype representation')
-                closest = [[np.inf, None, None, None] for _ in range(self.prototype_num)] 
-                for data in tqdm(self.trainset):
-                    print([closest[i][0] for i in range(len(closest))])
-                    # proposal_min is proto_num x 1
-                    proposal_min, prototype_rep, prototype_raw, patch_loc = self.model.propose_prototype(data) 
-                    for i in range(self.prototype_num): 
-                        if proposal_min[i] < closest[i][0]: 
-                            closest[i][0] = proposal_min[i]
-                            closest[i][1] = prototype_rep[i]
-                            closest[i][2] = prototype_raw[i]
-                            closest[i][3] = patch_loc[i]
+            if epoch in self.push_epochs or self.early_stopping and self.min_val_loss < np.mean(val_loss):
+                if type(self.model).__name__ == 'ProtICU': 
+                    print('Updating prototype representation')
+                    closest = [[np.inf, None, None, None] for _ in range(self.prototype_num)] 
+                    for data in tqdm(self.trainset):
+                        # proposal_min is proto_num x 1
+                        proposal_min, prototype_rep, prototype_raw, patch_loc = self.model.propose_prototype(data) 
+                        for i in range(self.prototype_num): 
+                            if proposal_min[i] < closest[i][0]: 
+                                closest[i][0] = proposal_min[i]
+                                closest[i][1] = prototype_rep[i]
+                                closest[i][2] = prototype_raw[i]
+                                closest[i][3] = patch_loc[i]
                             
-                #print(self.model.prototypes.shape)
-                #print(self.model.prototypes)
-                for i in range(self.prototype_num):
-                    self.model.prototypes[i,:] = closest[i][1].clone() + 1e-6 # update prototype representation
-                #print(self.model.prototypes.shape)
-                #print(self.model.prototypes)
-                
-                self.prototype_raw = ([closest[i][2] for i in range(len(closest))]
-                                      ,[closest[i][3] for i in range(len(closest))]) # update raw prototype
+                    for i in range(self.prototype_num):
+                        self.model.prototypes[i,:] = closest[i][1].clone() + 1e-6 # update prototype representation
+
+                    self.prototype_raw = ([closest[i][2] for i in range(len(closest))]
+                                          ,[closest[i][3] for i in range(len(closest))]) # update raw prototype
                 
             # check whether to early_stop
             if self.early_stopping and self.min_val_loss < np.mean(val_loss):
@@ -155,14 +157,10 @@ class TrainTest():
                     
             self.mean_val_loss.append(np.mean(val_loss))
             
-            # printing 
-            #print(self.model.prototypes)
-            print([(self.model.prototypes[i] > 1e-7).sum() for i in range(self.model.prototypes.shape[0])])
             print('Epoch: {}, train_loss: {}, valid_loss: {}'.format( \
                     epoch, \
                     np.around(np.mean(train_loss), decimals=8),\
                     np.around(np.mean(val_loss), decimals=8)))
-            print(self.model.last_layer.weight)
             
         return 0 
     

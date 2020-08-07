@@ -103,11 +103,12 @@ class ParamGenerators():
         self.samples_dict = {}
         self.samples_list = []
         
-    def sample(self, N):
+    def sample(self, N, hidden_present=True):
         self.samples_dict = {k: v.sample(N) for k,v in self.gen_dict.items()}
-        self.samples_dict['HIDDEN_SIZES'] = self.samples_dict['HIDDEN_AND_KERNEL_SIZES'][0]
-        self.samples_dict['KERNEL_SIZES'] = self.samples_dict['HIDDEN_AND_KERNEL_SIZES'][1]
-        del self.samples_dict['HIDDEN_AND_KERNEL_SIZES']
+        if hidden_present: 
+            self.samples_dict['HIDDEN_SIZES'] = self.samples_dict['HIDDEN_AND_KERNEL_SIZES'][0]
+            self.samples_dict['KERNEL_SIZES'] = self.samples_dict['HIDDEN_AND_KERNEL_SIZES'][1]
+            del self.samples_dict['HIDDEN_AND_KERNEL_SIZES']
         
         for i in range(N): 
             self.samples_list.append({k: v[i] for k,v in self.samples_dict.items()}) 
